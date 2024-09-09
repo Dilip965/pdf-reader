@@ -1,41 +1,23 @@
+from flask import Flask, render_template, request
 import os
-from flask import Flask, render_template, request, redirect
-from PyPDF2 import PdfReader
+import PyPDF2
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route("/", methods=["GET", "POST"])
 def index():
-    if request.method == 'POST':
-        if 'pdf' not in request.files:
-            return redirect(request.url)
+    text = ""
+    if request.method == "POST":
+        pdf_file = request.files["pdf"]
+        if pdf_file:
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            text = ""
+            for page_num in range(len(pdf_reader.pages)):
+                page = pdf_reader.pages[page_num]
+                text += page.extract_text() + "\n"
+    return render_template("index.html", text=text)
 
-        file = request.files['pdf']
-        
-        if file.filename == '':
-            return redirect(request.url)
-        
-        if file and file.filename.endswith('.pdf'):
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-
-            text = extract_text_from_pdf(filepath)
-
-            return render_template('index.html', text=text)
-
-    return render_template('index.html', text=None)
-
-def extract_text_from_pdf(pdf_path):
-    reader = PdfReader(pdf_path)
-    text = ''
-    
-    for page in reader.pages:
-        text += page.extract_text() + '\n'
-    
-    return text
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    # Bind to the port provided by the environment or use default (10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
